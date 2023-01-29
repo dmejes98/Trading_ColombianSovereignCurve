@@ -113,7 +113,7 @@ def valorar(cupon, fecha_emi, fecha_act, fecha_vto, ytm):
 inicio = time.time()
 
 mst_faciales = pd.read_excel(rf'data.xlsx')
-cons_valoracion = pd.read_excel(rf'tasas_dia.xlsx')
+cons_valoracion = pd.read_excel(rf'tasas_dia_n.xlsx')
 
 duracions = []
 duracion_mods = []
@@ -154,4 +154,4 @@ ejec_time = (final - inicio)/60
 print("Tiempo de ejecución en minutos: ", ejec_time)
 
 
-cons_valoracion.to_excel('consolidado_total.xlsx')
+# cons_valoracion.to_excel('consolidado_n.xlsx')
