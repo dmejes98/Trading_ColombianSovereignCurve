@@ -154,4 +154,4 @@ ejec_time = (final - inicio)/60
 print("Tiempo de ejecución en minutos: ", ejec_time)
 
 
-# cons_valoracion.to_excel('consolidado_n.xlsx')
+cons_valoracion.to_excel('consolidado.xlsx')
