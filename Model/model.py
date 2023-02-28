@@ -27,8 +27,8 @@ if __name__ == "__main__":
     cons_TES["Fecha"] = fechas_int
     
     
-    ventana_train = 63
-    ventana_val = 63
+    ventana_rebalanceo = 21
+    ventana_val = 21
     
     unique_trade_date = cons_TES.Fecha.unique()
     # print(unique_trade_date)
@@ -38,7 +38,52 @@ if __name__ == "__main__":
 
 # inicio = time.time()
 # Parámetros 
-# df = cons_TES
+df = cons_TES
+fechas_bursatiles = unique_trade_date
+rebalanceo = ventana_rebalanceo
+validacion = ventana_val
 
+#run_complete()
 
+ult_estado_ens = []
+ppo_perform = []
+ddpg_perform = []
+a2c_perform = []
+
+uso_modelo = []
+
+inicio = time.time()
+ides = []
+for i in range(rebalanceo + validacion, len(fechas_bursatiles), rebalanceo):
+    
+    if i - rebalanceo - validacion == 0:
+        # Se identifica que este es el estado inicial
+        initial = True
+    else:
+        # No es el estado inicial
+        initial = False
+    
+    # ides.append(initial)
+    
+    # Se separa dataset para entrenamiento utilizando función datasplit
+    entrenamiento = datasplit(df, fechas_bursatiles[0], fechas_bursatiles[i - rebalanceo - validacion])
+    
+    
+
+def datasplit(df, inicio, final):
+    
+    pass
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
