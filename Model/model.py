@@ -11,6 +11,22 @@ import datetime as dt
 import time
 
 
+from EnvTES_train import TESEnvEntr
+
+
+
+from stable_baselines.common.vec_env import DummyVecEnv
+
+
+def datasplit(df, inicio, final):
+    
+  
+    data = df[(df.Fecha >= inicio) & (df.Fecha < final)]
+    data = data.sort_values(['Fecha','Instrumento'], ignore_index = True)
+    data.index = data.Fecha.factorize()[0]
+    
+    return data
+
 
 if __name__ == "__main__":
     
@@ -65,14 +81,12 @@ for i in range(rebalanceo + validacion, len(fechas_bursatiles), rebalanceo):
     
     # ides.append(initial)
     
-    # Se separa dataset para entrenamiento utilizando función datasplit
+    # Se separa dataset para entrenamiento utilizando función datasplit y se genera un entorno de entrenamiento
     entrenamiento = datasplit(df, fechas_bursatiles[0], fechas_bursatiles[i - rebalanceo - validacion])
-    
+    env_entr = DummyVecEnv([lambda: TESEnvEntr(entrenamiento)])
     
 
-def datasplit(df, inicio, final):
-    
-    pass
+
     
     
     
