@@ -4,17 +4,12 @@ Created on Sat Feb 18 17:43:44 2023
 
 @author: David Mejia
 """
-
-
 import pandas as pd
 import datetime as dt
 import time
 
-
 from EnvTES_train import TESEnvEntr
-
-
-
+from EnvTES_val import TESEnvVal
 from stable_baselines.common.vec_env import DummyVecEnv
 
 
@@ -85,6 +80,11 @@ for i in range(rebalanceo + validacion, len(fechas_bursatiles), rebalanceo):
     entrenamiento = datasplit(df, fechas_bursatiles[0], fechas_bursatiles[i - rebalanceo - validacion])
     env_entr = DummyVecEnv([lambda: TESEnvEntr(entrenamiento)])
     
+    # Se separa dataset para validación utilizando función datasplit y se genera un entorno de validación
+    validate = datasplit(df, fechas_bursatiles[i - rebalanceo - validacion], fechas_bursatiles[i - rebalanceo])
+    env_val = DummyVecEnv([lambda: TESEnvVal(validate, iteracion=i)])
+    
+
 
 
     

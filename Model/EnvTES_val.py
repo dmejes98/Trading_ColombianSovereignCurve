@@ -33,11 +33,11 @@ REWARD_SCALING = 1e-4
 
 
 
-class TESEnvEntr(gym.Env):
+class TESEnvVal(gym.Env):
     """Entorno para negociación de TES en gym"""
     metadata = {'render.modes': ['human']}
     
-    def __init__(self, df, day = 0):
+    def __init__(self, df, day = 0, iteracion = ''):
         
         self.day = day
         self.df = df
@@ -113,14 +113,14 @@ class TESEnvEntr(gym.Env):
 
         if self.terminal:
             plt.plot(self.asset_memory,'r')
-            plt.savefig('/images/train/account_value_train.png')
+            plt.savefig('/images/validation/account_value_val.png')
             plt.close()
             end_total_asset = self.state[0]+ \
             sum(np.array(self.state[1:(TES_DIM+1)])*np.array(self.state[(TES_DIM+1):(TES_DIM*2+1)]))
             
             #print("end_total_asset:{}".format(end_total_asset))
             df_total_value = pd.DataFrame(self.asset_memory)
-            df_total_value.to_csv('/csv/train/account_value_train.csv')
+            df_total_value.to_csv('/csv/validation/account_value_val.csv')
             #print("total_reward:{}".format(self.state[0]+sum(np.array(self.state[1:(STOCK_DIM+1)])*np.array(self.state[(STOCK_DIM+1):61]))- INITIAL_ACCOUNT_BALANCE ))
             #print("total_cost: ", self.cost)
             #print("total_trades: ", self.trades)
