@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Mar  6 21:28:49 2023
+Created on Thu Apr  6 14:55:19 2023
 
 @author: David Mejia
 """
@@ -33,14 +33,16 @@ REWARD_SCALING = 1e-4
 
 
 
-class TESEnvVal(gym.Env):
+class TESEnvTrade(gym.Env):
     """Entorno para negociación de TES en gym"""
     metadata = {'render.modes': ['human']}
     
-    def __init__(self, df, day = 0, iteracion = ''):
+    def __init__(self, df, day = 0, initial=True, previous_state=[], model_name='', iteracion = ''):
         
         self.day = day
         self.df = df
+        self.initial = initial
+        self.previous_state = previous_state
         
         # Creación de espacios de acción y observación
         self.action_space =  spaces.Box(low = -1, high = 1, shape = (TES_DIM,))
@@ -71,6 +73,7 @@ class TESEnvVal(gym.Env):
         self.trades = 0
         #self.reset()
         self._seed()
+        self.model_name = model_name 
         self.iteration = iteracion
         
     def _buy_ticker(self, index, action):
@@ -114,29 +117,27 @@ class TESEnvVal(gym.Env):
 
         if self.terminal:
             plt.plot(self.asset_memory,'r')
-            plt.savefig('/images/validation/account_value_val_{}.png'.format(self.interacion))
+            plt.savefig('/images/trading/account_value_trade_{}_{}.png'.format(self.model_name, self.iteration))
             plt.close()
             df_total_value = pd.DataFrame(self.asset_memory)
-            df_total_value.to_csv('/csv/account_value_validation_{}.csv'.format(self.iteration))
+            df_total_value.to_csv('/csv/account_value_trade_{}_{}.csv'.format(self.model_name, self.iteration))
             end_total_asset = self.state[0]+ \
             sum(np.array(self.state[1:(TES_DIM+1)])*np.array(self.state[(TES_DIM+1):(TES_DIM*2+1)]))
+            print("previous_total_asset:{}".format(self.asset_memory[0]))  
             
-            # print("previous_total_asset:{}".format(self.asset_memory[0]))  
+            print("end_total_asset:{}".format(end_total_asset))
+            print("total_reward:{}".format(self.state[0]+sum(np.array(self.state[1:(TES_DIM+1)])*np.array(self.state[(TES_DIM+1):61]))- BALANCE_INICIAL_CUENTA ))
+            print("total_cost: ", self.cost)
+            print("total_trades: ", self.trades)
             
-            #print("end_total_asset:{}".format(end_total_asset))
-            # df_total_value = pd.DataFrame(self.asset_memory)
-            # df_total_value.to_csv('/csv/validation/account_value_val.csv')
-            #print("total_reward:{}".format(self.state[0]+sum(np.array(self.state[1:(STOCK_DIM+1)])*np.array(self.state[(STOCK_DIM+1):61]))- INITIAL_ACCOUNT_BALANCE ))
-            #print("total_cost: ", self.cost)
-            #print("total_trades: ", self.trades)
             df_total_value.columns = ['account_value']
             df_total_value['daily_return']=df_total_value.pct_change(1)
             sharpe = (252**0.5)*df_total_value['daily_return'].mean()/ \
                   df_total_value['daily_return'].std()
-            #print("Sharpe: ",sharpe)
+            print("Sharpe: ",sharpe)
             #print("=================================")
-            # df_rewards = pd.DataFrame(self.rewards_memory)
-            #df_rewards.to_csv('/kaggle/working/account_rewards_train.csv')
+            df_rewards = pd.DataFrame(self.rewards_memory)
+            df_rewards.to_csv('/csv/account_rewards_trade_{}_{}.csv'.format(self.model_name, self.iteration))
             
             # print('total asset: {}'.format(self.state[0]+ sum(np.array(self.state[1:29])*np.array(self.state[29:]))))
             #with open('obs.pkl', 'wb') as f:  
@@ -198,27 +199,59 @@ class TESEnvVal(gym.Env):
         return self.state, self.reward, self.terminal, {}
 
     def reset(self):
-        self.asset_memory = [BALANCE_INICIAL_CUENTA]
-        self.day = 0
-        self.data = self.df.loc[self.day,:]
-        self.cost = 0
-        self.trades = 0
-        self.terminal = False 
-        self.rewards_memory = []
-        #initiate state
-        self.state = [BALANCE_INICIAL_CUENTA] + \
-                      self.data.Tasa.values.tolist() + \
-                      self.data["Precio Limpio"].values.tolist() + \
-                      self.data["Precio Sucio"].values.tolist() + \
-                      [0]*TES_DIM + \
-                      self.data["Duración"].values.tolist() + \
-                      self.data["Duración Modificada"].values.tolist() + \
-                      self.data.DV01.values.tolist() + \
-                      self.data.Convexidad.values.tolist()
+
+        if self.initial:
+            self.asset_memory = [BALANCE_INICIAL_CUENTA]
+            self.day = 0
+            self.data = self.df.loc[self.day,:]
+            self.turbulence = 0
+            self.cost = 0
+            self.trades = 0
+            self.terminal = False 
+            #self.iteration=self.iteration
+            self.rewards_memory = []
+            #initiate state
+            #initiate state
+            self.state = [BALANCE_INICIAL_CUENTA] + \
+                          self.data.Tasa.values.tolist() + \
+                          self.data["Precio Limpio"].values.tolist() + \
+                          self.data["Precio Sucio"].values.tolist() + \
+                          [0]*TES_DIM + \
+                          self.data["Duración"].values.tolist() + \
+                          self.data["Duración Modificada"].values.tolist() + \
+                          self.data.DV01.values.tolist() + \
+                          self.data.Convexidad.values.tolist()
         # iteration += 1 
+        else:
+            previous_total_asset = self.previous_state[0]+ \
+            sum(np.array(self.previous_state[1:(TES_DIM+1)])*np.array(self.previous_state[(TES_DIM+1):(TES_DIM*2+1)]))
+            self.asset_memory = [previous_total_asset]
+            #self.asset_memory = [self.previous_state[0]]
+            self.day = 0
+            self.data = self.df.loc[self.day,:]
+            self.turbulence = 0
+            self.cost = 0
+            self.trades = 0
+            self.terminal = False 
+            #self.iteration=iteration
+            self.rewards_memory = []
+            #initiate state
+            #self.previous_state[(STOCK_DIM+1):(STOCK_DIM*2+1)]
+            #[0]*STOCK_DIM + \
+
+            self.state = [ self.previous_state[0]] + \
+                          self.data.Tasa.values.tolist() + \
+                          self.data["Precio Limpio"].values.tolist() + \
+                          self.data["Precio Sucio"].values.tolist() + \
+                          [0]*TES_DIM + \
+                          self.data["Duración"].values.tolist() + \
+                          self.data["Duración Modificada"].values.tolist() + \
+                          self.data.DV01.values.tolist() + \
+                          self.data.Convexidad.values.tolist()
+            
         return self.state
     
-    def render(self, mode='human'):
+    def render(self, mode='human', close = False):
         return self.state
 
     def _seed(self, seed=1):
