@@ -44,7 +44,7 @@ class TESEnvEntr(gym.Env):
         
         # Creación de espacios de acción y observación
         self.action_space =  spaces.Box(low = -1, high = 1, shape = (TES_DIM,))
-        self.observation_space = spaces.Box(low=0, high=np.inf, shape = (181,))
+        
         
         # Cargar datos desde DataFrame
         self.data = self.df.loc[self.day,:]
@@ -60,12 +60,13 @@ class TESEnvEntr(gym.Env):
                       self.data["Duración Modificada"].values.tolist() + \
                       self.data.DV01.values.tolist() + \
                       self.data.Convexidad.values.tolist()
-                      
+        
+        self.observation_space = spaces.Box(low=0, high=np.inf, shape = (len(self.state),))
         # Inicializar sistema de recompensas
         self.recompensa = 0
         self.costo = 0
         
-        # Memorizar los cambios en el balance
+        # Memorizar los cambios en el balance   
         self.memoria_activos = [BALANCE_INICIAL_CUENTA]
         self.memoria_recompensa = []
         self.trades = 0
@@ -156,11 +157,11 @@ class TESEnvEntr(gym.Env):
 
             for index in sell_index:
                 # print('take sell action'.format(actions[index]))
-                self._sell_stock(index, actions[index])
+                self._sell_ticker(index, actions[index])
 
             for index in buy_index:
                 # print('take buy action: {}'.format(actions[index]))
-                self._buy_stock(index, actions[index])
+                self._buy_ticker(index, actions[index])
 
             self.day += 1
             self.data = self.df.loc[self.day,:]         

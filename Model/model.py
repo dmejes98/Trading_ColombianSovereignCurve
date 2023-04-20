@@ -8,31 +8,34 @@ import pandas as pd
 import numpy as np
 import datetime as dt
 import time
+import matplotlib.pyplot as plt
 
 from EnvTES_train import TESEnvEntr
 from EnvTES_val import TESEnvVal
-from EnvTES_tade import TESEnvTrade
-from stable_baselines.common.vec_env import DummyVecEnv
+from EnvTES_trade import TESEnvTrade
 
-from stable_baselines import GAIL, SAC
-from stable_baselines import ACER
+import tensorflow as tf
+
 from stable_baselines import PPO2
 from stable_baselines import A2C
 from stable_baselines import DDPG
-from stable_baselines import TD3
 
 from stable_baselines.ddpg.policies import DDPGPolicy
 from stable_baselines.common.policies import MlpPolicy, MlpLstmPolicy, MlpLnLstmPolicy
 from stable_baselines.common.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise, AdaptiveParamNoiseSpec
 from stable_baselines.common.vec_env import DummyVecEnv
 
-def train_A2C(env_train, modelo, timesteps=25000):
+import warnings
+warnings.filterwarnings("ignore")
+
+
+def train_A2C(env_train, model_name, timesteps=25000):
     start = time.time()
     model = A2C('MlpPolicy', env_train, verbose=0)
     model.learn(total_timesteps=timesteps)
     end = time.time()
 
-    model.save(f"/Working/{modelo}")
+    model.save(f"/Working/{model_name}")
     print(' - Training time (A2C): ', (end - start) / 60, ' minutes')
     return model
 
@@ -69,7 +72,7 @@ def train_DDPG(env_train, model_name, timesteps=10000):
 
 
 def encontrar_sharpe_validacion(iteration):
-    df_total_value = pd.read_csv('/Working/account_value_validation_{}.csv'.format(iteration), index_col=0)
+    df_total_value = pd.read_csv('/csv/account_value_validation_{}.csv'.format(iteration), index_col=0)
     df_total_value.columns = ['account_value_train']
     df_total_value['daily_return'] = df_total_value.pct_change(1)
     sharpe = (4 ** 0.5) * df_total_value['daily_return'].mean() / \
@@ -124,6 +127,98 @@ def datasplit(df, inicio, final):
 
 
 
+def estrategia_ensamblada(df, fechas_bursatiles, rebalanceo, validacion):
+    # Parámetros 
+    # df = cons_TES
+    # fechas_bursatiles = unique_trade_date
+    # rebalanceo = ventana_rebalanceo
+    # validacion = ventana_val
+    
+    #run_complete()
+    
+    ult_estado_ens = []
+    ppo_perform = []
+    ddpg_perform = []
+    a2c_perform = []
+    
+    uso_modelo = []
+    
+    inicio = time.time()
+    for i in range(2*rebalanceo + 2*validacion, len(fechas_bursatiles), rebalanceo):
+        # i = 2*rebalanceo + 2*validacion
+        if i - 2*rebalanceo - 2*validacion == 0:
+            # Se identifica que este es el estado inicial
+            initial = True
+        else:
+            # No es el estado inicial
+            initial = False
+        
+        # ides.append(initial)
+        print("-" * 50)
+        # Se separa dataset para entrenamiento utilizando función datasplit y se genera un entorno de entrenamiento
+        entrenamiento = datasplit(df, fechas_bursatiles[0], fechas_bursatiles[i - rebalanceo - validacion])
+        env_entr = DummyVecEnv([lambda: TESEnvEntr(entrenamiento)])
+        
+        # Se separa dataset para validación utilizando función datasplit y se genera un entorno de validación
+        validate = datasplit(df, fechas_bursatiles[i - rebalanceo - validacion], fechas_bursatiles[i - rebalanceo])
+        env_val = DummyVecEnv([lambda: TESEnvVal(validate, iteracion=i)])
+        
+        obs_val = env_val.reset()
+        
+        print(" - Entrenamiento del Modelo desde: ", fechas_bursatiles[0], "hasta: ",
+              fechas_bursatiles[i - rebalanceo - validacion])
+        print(" - Entrenamiento A2C")
+        model_a2c = train_A2C(env_entr, model_name="A2C_FixedIncome_Col_{}".format(i), timesteps=30000)
+        print(" - Validación A2C desde: ", fechas_bursatiles[i - rebalanceo - validacion], "to ",
+              fechas_bursatiles[i - rebalanceo])
+        DRL_validation(model=model_a2c, test_data=validate, test_env=env_val, test_obs=obs_val)
+        sharpe_a2c = encontrar_sharpe_validacion(i)
+        print(" - A2C Sharpe Ratio: ", sharpe_a2c)
+    
+        print(" - Entrenamiento PPO")
+        model_ppo = train_PPO(env_entr, model_name="PPO_FixedIncome_Col_{}".format(i), timesteps=100000)
+        print(" - Validación PPO desde: ", fechas_bursatiles[i - rebalanceo - validacion], "hasta: ",
+              fechas_bursatiles[i - rebalanceo])
+        DRL_validation(model=model_ppo, test_data=validate, test_env=env_val, test_obs=obs_val)
+        sharpe_ppo = encontrar_sharpe_validacion(i)
+        print(" - PPO Sharpe Ratio: ", sharpe_ppo)
+    
+        print(" - Entrenamiento DDPG")
+        model_ddpg = train_DDPG(env_entr, model_name="DDPG_FixedIncome_Col_{}".format(i), timesteps=10000)
+        print(" - Validación DDPG desde: ", fechas_bursatiles[i - rebalanceo - validacion], "hasta: ",
+              unique_trade_date[i - rebalanceo])
+        DRL_validation(model=model_ddpg, test_data=validate, test_env=env_val, test_obs=obs_val)
+        sharpe_ddpg = encontrar_sharpe_validacion(i)
+        print(" - DDPG Sharpe Ratio: ", sharpe_ddpg)
+    
+        ppo_perform.append(sharpe_ppo)
+        a2c_perform.append(sharpe_a2c)
+        ddpg_perform.append(sharpe_ddpg)
+        
+        # Selección del Modelo Basado en Sharpe Ratio
+        if (sharpe_ppo >= sharpe_a2c) & (sharpe_ppo >= sharpe_ddpg):
+            model_ensemble = model_ppo
+            uso_modelo.append('PPO')
+        elif (sharpe_a2c > sharpe_ppo) & (sharpe_a2c > sharpe_ddpg):
+            model_ensemble = model_a2c
+            uso_modelo.append('A2C')
+        else:
+            model_ensemble = model_ddpg
+            uso_modelo.append('DDPG')
+    
+        print(" - Trading desde: ", fechas_bursatiles[i - rebalanceo], "hasta ", fechas_bursatiles[i])
+        print("-" * 50)
+        ult_estado_ens = prediccion_DRL(df=df, model=model_ensemble, name="ensemble",
+                                             last_state=ult_estado_ens, iter_num=i,
+                                             unique_trade_date=unique_trade_date,
+                                             rebalance_window=rebalanceo,
+                                             initial=initial)
+        
+    final = time.time()
+    print("Ensemble Strategy took: ", (inicio - final) / 60, " minutes")
+    
+
+
 if __name__ == "__main__":
     
     #Importamos nuestra base de datos
@@ -145,118 +240,10 @@ if __name__ == "__main__":
     unique_trade_date = cons_TES.Fecha.unique()
     # print(unique_trade_date)
     
-
-# Correr estrategia de ensamble
-
-# inicio = time.time()
-# Parámetros 
-df = cons_TES
-fechas_bursatiles = unique_trade_date
-rebalanceo = ventana_rebalanceo
-validacion = ventana_val
-
-#run_complete()
-
-ult_estado_ens = []
-ppo_perform = []
-ddpg_perform = []
-a2c_perform = []
-
-uso_modelo = []
-
-inicio = time.time()
-ides = []
-for i in range(rebalanceo + validacion, len(fechas_bursatiles), rebalanceo):
-    
-    if i - rebalanceo - validacion == 0:
-        # Se identifica que este es el estado inicial
-        initial = True
-    else:
-        # No es el estado inicial
-        initial = False
-    
-    # ides.append(initial)
-    
-    # Se separa dataset para entrenamiento utilizando función datasplit y se genera un entorno de entrenamiento
-    entrenamiento = datasplit(df, fechas_bursatiles[0], fechas_bursatiles[i - rebalanceo - validacion])
-    env_entr = DummyVecEnv([lambda: TESEnvEntr(entrenamiento)])
-    
-    # Se separa dataset para validación utilizando función datasplit y se genera un entorno de validación
-    validate = datasplit(df, fechas_bursatiles[i - rebalanceo - validacion], fechas_bursatiles[i - rebalanceo])
-    env_val = DummyVecEnv([lambda: TESEnvVal(validate, iteracion=i)])
-    
-    obs_val = env_val.reset()
-    
-    print(" - Entrenamiento del Modelo desde: ", fechas_bursatiles[0], "hasta: ",
-          fechas_bursatiles[i - rebalanceo - validacion])
-    print(" - Entrenamiento A2C")
-    model_a2c = train_A2C(env_entr, model_name="A2C_FixedIncome_Col_{}".format(i), timesteps=30000)
-    print(" - Validación A2C desde: ", fechas_bursatiles[i - rebalanceo - validacion], "to ",
-          fechas_bursatiles[i - rebalanceo])
-    DRL_validation(model=model_a2c, test_data=validate, test_env=env_val, test_obs=obs_val)
-    sharpe_a2c = encontrar_sharpe_validacion(i)
-    print(" - A2C Sharpe Ratio: ", sharpe_a2c)
-
-    print(" - Entrenamiento PPO")
-    model_ppo = train_PPO(env_entr, model_name="PPO_FixedIncome_Col_{}".format(i), timesteps=100000)
-    print(" - Validación PPO desde: ", fechas_bursatiles[i - rebalanceo - validacion], "hasta: ",
-          fechas_bursatiles[i - rebalanceo])
-    DRL_validation(model=model_ppo, test_data=validate, test_env=env_val, test_obs=obs_val)
-    sharpe_ppo = encontrar_sharpe_validacion(i)
-    print(" - PPO Sharpe Ratio: ", sharpe_ppo)
-
-    print(" - Entrenamiento DDPG")
-    model_ddpg = train_DDPG(env_entr, model_name="DDPG_FixedIncome_Col_{}".format(i), timesteps=10000)
-    print(" - Validación DDPG desde: ", fechas_bursatiles[i - rebalanceo - validacion], "hasta: ",
-          unique_trade_date[i - rebalanceo])
-    DRL_validation(model=model_ddpg, test_data=validate, test_env=env_val, test_obs=obs_val)
-    sharpe_ddpg = encontrar_sharpe_validacion(i)
-    print(" - DDPG Sharpe Ratio: ", sharpe_ddpg)
-
-    ppo_perform.append(sharpe_ppo)
-    a2c_perform.append(sharpe_a2c)
-    ddpg_perform.append(sharpe_ddpg)
-    
-    # Selección del Modelo Basado en Sharpe Ratio
-    if (sharpe_ppo >= sharpe_a2c) & (sharpe_ppo >= sharpe_ddpg):
-        model_ensemble = model_ppo
-        uso_modelo.append('PPO')
-    elif (sharpe_a2c > sharpe_ppo) & (sharpe_a2c > sharpe_ddpg):
-        model_ensemble = model_a2c
-        uso_modelo.append('A2C')
-    else:
-        model_ensemble = model_ddpg
-        uso_modelo.append('DDPG')
-
-    print(" - Trading desde: ", fechas_bursatiles[i - rebalanceo], "hasta ", fechas_bursatiles[i])
-    print("-" * 50)
-    ult_estado_ens = prediccion_DRL(df=df, model=model_ensemble, name="ensemble",
-                                         last_state=ult_estado_ens, iter_num=i,
-                                         unique_trade_date=unique_trade_date,
-                                         rebalance_window=rebalanceo,
-                                         initial=initial)
-    
-final = time.time()
-print("Ensemble Strategy took: ", (inicio - final) / 60, " minutes")
+    # Correr estrategia de ensamble
+    estrategia_ensamblada(df = cons_TES, 
+                              fechas_bursatiles = unique_trade_date,
+                              rebalanceo = ventana_rebalanceo,
+                              validacion = ventana_val)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-    
-    
-    
-    
-    
