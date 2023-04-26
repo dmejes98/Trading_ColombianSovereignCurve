@@ -15,6 +15,8 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import pickle
 
+import warnings
+warnings.filterwarnings("ignore")
 
 
 # Factor de normalización de negociación
@@ -61,9 +63,10 @@ class TESEnvTrade(gym.Env):
                       self.data["Duración"].values.tolist() + \
                       self.data["Duración Modificada"].values.tolist() + \
                       self.data.DV01.values.tolist() + \
-                      self.data.Convexidad.values.tolist()
+                      self.data.Convexidad.values.tolist() + \
+                      self.data.Vigente.values.tolist()
         
-        self.observation_space = spaces.Box(low=0, high=np.inf, shape = (len(self.state),))
+        self.observation_space = spaces.Box(low=0, high=np.inf, shape = (459,))
              
         # Inicializar sistema de recompensas
         self.recompensa = 0
@@ -119,10 +122,10 @@ class TESEnvTrade(gym.Env):
 
         if self.terminal:
             plt.plot(self.asset_memory,'r')
-            plt.savefig('/images/trading/account_value_trade_{}_{}.png'.format(self.model_name, self.iteration))
+            plt.savefig('images/trading/account_value_trade_{}_{}.png'.format(self.model_name, self.iteration))
             plt.close()
             df_total_value = pd.DataFrame(self.asset_memory)
-            df_total_value.to_csv('/csv/account_value_trade_{}_{}.csv'.format(self.model_name, self.iteration))
+            df_total_value.to_csv('csv/account_value_trade_{}_{}.csv'.format(self.model_name, self.iteration))
             end_total_asset = self.state[0]+ \
             sum(np.array(self.state[1:(TES_DIM+1)])*np.array(self.state[(TES_DIM+1):(TES_DIM*2+1)]))
             print("previous_total_asset:{}".format(self.asset_memory[0]))  
@@ -139,7 +142,7 @@ class TESEnvTrade(gym.Env):
             print("Sharpe: ",sharpe)
             #print("=================================")
             df_rewards = pd.DataFrame(self.rewards_memory)
-            df_rewards.to_csv('/csv/account_rewards_trade_{}_{}.csv'.format(self.model_name, self.iteration))
+            df_rewards.to_csv('csv/account_rewards_trade_{}_{}.csv'.format(self.model_name, self.iteration))
             
             # print('total asset: {}'.format(self.state[0]+ sum(np.array(self.state[1:29])*np.array(self.state[29:]))))
             #with open('obs.pkl', 'wb') as f:  
@@ -183,7 +186,8 @@ class TESEnvTrade(gym.Env):
                           self.data["Duración"].values.tolist() + \
                           self.data["Duración Modificada"].values.tolist() + \
                           self.data.DV01.values.tolist() + \
-                          self.data.Convexidad.values.tolist()
+                          self.data.Convexidad.values.tolist() + \
+                          self.data.Vigente.values.tolist()
 
             end_total_asset = self.state[0]+ \
             sum(np.array(self.state[1:(TES_DIM+1)])*np.array(self.state[(TES_DIM+1):(TES_DIM*2+1)]))
@@ -222,7 +226,8 @@ class TESEnvTrade(gym.Env):
                           self.data["Duración"].values.tolist() + \
                           self.data["Duración Modificada"].values.tolist() + \
                           self.data.DV01.values.tolist() + \
-                          self.data.Convexidad.values.tolist()
+                          self.data.Convexidad.values.tolist() + \
+                          self.data.Vigente.values.tolist()
         # iteration += 1 
         else:
             previous_total_asset = self.previous_state[0]+ \
@@ -249,7 +254,8 @@ class TESEnvTrade(gym.Env):
                           self.data["Duración"].values.tolist() + \
                           self.data["Duración Modificada"].values.tolist() + \
                           self.data.DV01.values.tolist() + \
-                          self.data.Convexidad.values.tolist()
+                          self.data.Convexidad.values.tolist() + \
+                          self.data.Vigente.values.tolist()
             
         return self.state
     

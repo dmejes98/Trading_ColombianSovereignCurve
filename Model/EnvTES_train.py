@@ -15,6 +15,8 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import pickle
 
+import warnings
+warnings.filterwarnings("ignore")
 
 
 # Factor de normalización de negociación
@@ -59,9 +61,10 @@ class TESEnvEntr(gym.Env):
                       self.data["Duración"].values.tolist() + \
                       self.data["Duración Modificada"].values.tolist() + \
                       self.data.DV01.values.tolist() + \
-                      self.data.Convexidad.values.tolist()
+                      self.data.Convexidad.values.tolist() + \
+                      self.data.Vigente.values.tolist()
         
-        self.observation_space = spaces.Box(low=0, high=np.inf, shape = (len(self.state),))
+        self.observation_space = spaces.Box(low=0, high=np.inf, shape = (459,))
         # Inicializar sistema de recompensas
         self.recompensa = 0
         self.costo = 0
@@ -114,15 +117,15 @@ class TESEnvEntr(gym.Env):
 
         if self.terminal:
             plt.plot(self.asset_memory,'r')
-            plt.savefig('/images/train/account_value_train.png')
+            plt.savefig('images/train/account_value_train.png')
             plt.close()
             end_total_asset = self.state[0]+ \
             sum(np.array(self.state[1:(TES_DIM+1)])*np.array(self.state[(TES_DIM+1):(TES_DIM*2+1)]))
             
             #print("end_total_asset:{}".format(end_total_asset))
             df_total_value = pd.DataFrame(self.asset_memory)
-            df_total_value.to_csv('/csv/train/account_value_train.csv')
-            #print("total_reward:{}".format(self.state[0]+sum(np.array(self.state[1:(STOCK_DIM+1)])*np.array(self.state[(STOCK_DIM+1):61]))- INITIAL_ACCOUNT_BALANCE ))
+            df_total_value.to_csv('csv/train/account_value_train.csv')
+            #print("total_reward:{}".format(self.state[0]+sum(np.array(self.state[1:(TES_DIM+1)])*np.array(self.state[(TES_DIM+1):61]))- INITIAL_ACCOUNT_BALANCE ))
             #print("total_cost: ", self.cost)
             #print("total_trades: ", self.trades)
             df_total_value.columns = ['account_value']
@@ -176,7 +179,8 @@ class TESEnvEntr(gym.Env):
                           self.data["Duración"].values.tolist() + \
                           self.data["Duración Modificada"].values.tolist() + \
                           self.data.DV01.values.tolist() + \
-                          self.data.Convexidad.values.tolist()
+                          self.data.Convexidad.values.tolist() + \
+                          self.data.Vigente.values.tolist()
 
             end_total_asset = self.state[0]+ \
             sum(np.array(self.state[1:(TES_DIM+1)])*np.array(self.state[(TES_DIM+1):(TES_DIM*2+1)]))
@@ -210,7 +214,8 @@ class TESEnvEntr(gym.Env):
                       self.data["Duración"].values.tolist() + \
                       self.data["Duración Modificada"].values.tolist() + \
                       self.data.DV01.values.tolist() + \
-                      self.data.Convexidad.values.tolist()
+                      self.data.Convexidad.values.tolist() + \
+                      self.data.Vigente.values.tolist()
         # iteration += 1 
         return self.state
     

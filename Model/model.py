@@ -35,7 +35,7 @@ def train_A2C(env_train, model_name, timesteps=25000):
     model.learn(total_timesteps=timesteps)
     end = time.time()
 
-    model.save(f"/Working/{model_name}")
+    model.save(f"Working/{model_name}")
     print(' - Training time (A2C): ', (end - start) / 60, ' minutes')
     return model
 
@@ -48,7 +48,7 @@ def train_PPO(env_train, model_name, timesteps=50000):
     model.learn(total_timesteps=timesteps)
     end = time.time()
 
-    model.save(f"/Working/{model_name}")
+    model.save(f"Working/{model_name}")
     print(' - Training time (PPO): ', (end - start) / 60, ' minutes')
     return model
 
@@ -65,14 +65,14 @@ def train_DDPG(env_train, model_name, timesteps=10000):
     model.learn(total_timesteps=timesteps)
     end = time.time()
 
-    model.save(f"/Working/{model_name}")
+    model.save(f"Working/{model_name}")
     print(' - Training time (DDPG): ', (end-start)/60,' minutes')
     return model
 
 
 
 def encontrar_sharpe_validacion(iteration):
-    df_total_value = pd.read_csv('/csv/account_value_validation_{}.csv'.format(iteration), index_col=0)
+    df_total_value = pd.read_csv('csv/account_value_validation_{}.csv'.format(iteration), index_col=0)
     df_total_value.columns = ['account_value_train']
     df_total_value['daily_return'] = df_total_value.pct_change(1)
     sharpe = (4 ** 0.5) * df_total_value['daily_return'].mean() / \
@@ -112,7 +112,7 @@ def prediccion_DRL(df,
             last_state = env_trade.render()
 
     df_last_state = pd.DataFrame({'last_state': last_state})
-    df_last_state.to_csv('/csv/last_state_{}_{}.csv'.format(name, i), index=False)
+    df_last_state.to_csv('csv/last_state_{}_{}.csv'.format(name, i), index=False)
     return last_state
 
 
@@ -120,10 +120,32 @@ def datasplit(df, inicio, final):
     
   
     data = df[(df.Fecha >= inicio) & (df.Fecha < final)]
+    
+    maestro_TES = pd.read_excel(r'data.xlsx')
+    data["Vigente"] = 1
+    new_data = pd.DataFrame(columns = data.columns) 
+    aux_data = data.copy()
+    for i in data.Fecha.unique():
+
+        filtered_data = aux_data[aux_data["Fecha"] == i]
+        
+        for j in maestro_TES["Nemo"]:
+
+            if j not in list(filtered_data["Instrumento"]):
+
+                new_element = [i, j, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                new_data.loc[len(new_data)] = new_element
+        
+            
+    data = pd.concat([data, new_data])  
+    
+    
     data = data.sort_values(['Fecha','Instrumento'], ignore_index = True)
     data.index = data.Fecha.factorize()[0]
     
     return data
+    
+    
 
 
 
@@ -223,7 +245,7 @@ if __name__ == "__main__":
     
     #Importamos nuestra base de datos
     cons_TES = pd.read_excel(r'consolidado_total.xlsx')
-    
+        
     fechas_int = []
     for i in cons_TES.index:
         
