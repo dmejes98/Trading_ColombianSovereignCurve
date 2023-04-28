@@ -9,4 +9,7 @@
 # Folders
 
 __pycache__/
+csv/
+images/
+Working/
 

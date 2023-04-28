@@ -56,10 +56,10 @@ class TESEnvTrade(gym.Env):
         
         # Inicializar el estado
         self.state = [BALANCE_INICIAL_CUENTA] + \
-                      self.data.Tasa.values.tolist() + \
-                      self.data["Precio Limpio"].values.tolist() + \
                       self.data["Precio Sucio"].values.tolist() + \
                       [0]*TES_DIM + \
+                      self.data.Tasa.values.tolist() + \
+                      self.data["Precio Limpio"].values.tolist() + \
                       self.data["Duración"].values.tolist() + \
                       self.data["Duración Modificada"].values.tolist() + \
                       self.data.DV01.values.tolist() + \
@@ -84,7 +84,10 @@ class TESEnvTrade(gym.Env):
     def _buy_ticker(self, index, action):
         
         # perform buy action based on the sign of the action
-        disponible = self.state[0] // self.state[index+1]
+        if self.state[index + TES_DIM*8 + 1] == "SI":
+            disponible = self.state[0] // self.state[index+1]
+        else:
+            disponible = 0
         # print('available_amount:{}'.format(available_amount))
 
         #update balance
@@ -131,7 +134,7 @@ class TESEnvTrade(gym.Env):
             print("previous_total_asset:{}".format(self.asset_memory[0]))  
             
             print("end_total_asset:{}".format(end_total_asset))
-            print("total_reward:{}".format(self.state[0]+sum(np.array(self.state[1:(TES_DIM+1)])*np.array(self.state[(TES_DIM+1):61]))- BALANCE_INICIAL_CUENTA ))
+            print("total_reward:{}".format(self.state[0]+sum(np.array(self.state[1:(TES_DIM+1)])*np.array(self.state[(TES_DIM+1):(TES_DIM*2+1)]))- BALANCE_INICIAL_CUENTA ))
             print("total_cost: ", self.cost)
             print("total_trades: ", self.trades)
             
@@ -179,10 +182,10 @@ class TESEnvTrade(gym.Env):
             # print("stock_shares:{}".format(self.state[29:]))
 
             self.state = [self.state[0]] + \
-                          self.data.Tasa.values.tolist() + \
-                          self.data["Precio Limpio"].values.tolist() + \
                           self.data["Precio Sucio"].values.tolist() + \
                           list(self.state[(TES_DIM+1):(TES_DIM*2+1)]) + \
+                          self.data.Tasa.values.tolist() + \
+                          self.data["Precio Limpio"].values.tolist() + \
                           self.data["Duración"].values.tolist() + \
                           self.data["Duración Modificada"].values.tolist() + \
                           self.data.DV01.values.tolist() + \
@@ -219,10 +222,10 @@ class TESEnvTrade(gym.Env):
             #initiate state
             #initiate state
             self.state = [BALANCE_INICIAL_CUENTA] + \
-                          self.data.Tasa.values.tolist() + \
-                          self.data["Precio Limpio"].values.tolist() + \
                           self.data["Precio Sucio"].values.tolist() + \
                           [0]*TES_DIM + \
+                          self.data.Tasa.values.tolist() + \
+                          self.data["Precio Limpio"].values.tolist() + \
                           self.data["Duración"].values.tolist() + \
                           self.data["Duración Modificada"].values.tolist() + \
                           self.data.DV01.values.tolist() + \
@@ -247,10 +250,10 @@ class TESEnvTrade(gym.Env):
             #[0]*STOCK_DIM + \
 
             self.state = [ self.previous_state[0]] + \
-                          self.data.Tasa.values.tolist() + \
-                          self.data["Precio Limpio"].values.tolist() + \
                           self.data["Precio Sucio"].values.tolist() + \
                           [0]*TES_DIM + \
+                          self.data.Tasa.values.tolist() + \
+                          self.data["Precio Limpio"].values.tolist() + \
                           self.data["Duración"].values.tolist() + \
                           self.data["Duración Modificada"].values.tolist() + \
                           self.data.DV01.values.tolist() + \

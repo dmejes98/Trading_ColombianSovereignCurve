@@ -54,10 +54,10 @@ class TESEnvVal(gym.Env):
         
         # Inicializar el estado
         self.state = [BALANCE_INICIAL_CUENTA] + \
-                      self.data.Tasa.values.tolist() + \
-                      self.data["Precio Limpio"].values.tolist() + \
                       self.data["Precio Sucio"].values.tolist() + \
                       [0]*TES_DIM + \
+                      self.data.Tasa.values.tolist() + \
+                      self.data["Precio Limpio"].values.tolist() + \
                       self.data["Duración"].values.tolist() + \
                       self.data["Duración Modificada"].values.tolist() + \
                       self.data.DV01.values.tolist() + \
@@ -81,7 +81,10 @@ class TESEnvVal(gym.Env):
     def _buy_ticker(self, index, action):
         
         # perform buy action based on the sign of the action
-        disponible = self.state[0] // self.state[index+1]
+        if self.state[index + TES_DIM*8 + 1] == "SI":
+            disponible = self.state[0] // self.state[index+1]
+        else:
+            disponible = 0
         # print('available_amount:{}'.format(available_amount))
 
         #update balance
@@ -119,10 +122,10 @@ class TESEnvVal(gym.Env):
 
         if self.terminal:
             plt.plot(self.asset_memory,'r')
-            plt.savefig('images/validation/account_value_val_{}.png'.format(self.interacion))
+            plt.savefig('images/validation/account_value_val_{}.png'.format(self.iteration))
             plt.close()
             df_total_value = pd.DataFrame(self.asset_memory)
-            df_total_value.to_csv('csv/account_value_validation_{}.csv'.format(self.iteration))
+            df_total_value.to_csv('csv/validation/account_value_validation_{}.csv'.format(self.iteration))
             end_total_asset = self.state[0]+ \
             sum(np.array(self.state[1:(TES_DIM+1)])*np.array(self.state[(TES_DIM+1):(TES_DIM*2+1)]))
             
@@ -178,10 +181,10 @@ class TESEnvVal(gym.Env):
             # print("stock_shares:{}".format(self.state[29:]))
 
             self.state = [self.state[0]] + \
-                          self.data.Tasa.values.tolist() + \
-                          self.data["Precio Limpio"].values.tolist() + \
                           self.data["Precio Sucio"].values.tolist() + \
                           list(self.state[(TES_DIM+1):(TES_DIM*2+1)]) + \
+                          self.data.Tasa.values.tolist() + \
+                          self.data["Precio Limpio"].values.tolist() + \
                           self.data["Duración"].values.tolist() + \
                           self.data["Duración Modificada"].values.tolist() + \
                           self.data.DV01.values.tolist() + \
@@ -213,10 +216,10 @@ class TESEnvVal(gym.Env):
         self.rewards_memory = []
         #initiate state
         self.state = [BALANCE_INICIAL_CUENTA] + \
-                      self.data.Tasa.values.tolist() + \
-                      self.data["Precio Limpio"].values.tolist() + \
                       self.data["Precio Sucio"].values.tolist() + \
                       [0]*TES_DIM + \
+                      self.data.Tasa.values.tolist() + \
+                      self.data["Precio Limpio"].values.tolist() + \
                       self.data["Duración"].values.tolist() + \
                       self.data["Duración Modificada"].values.tolist() + \
                       self.data.DV01.values.tolist() + \

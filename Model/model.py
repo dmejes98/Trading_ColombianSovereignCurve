@@ -72,7 +72,7 @@ def train_DDPG(env_train, model_name, timesteps=10000):
 
 
 def encontrar_sharpe_validacion(iteration):
-    df_total_value = pd.read_csv('csv/account_value_validation_{}.csv'.format(iteration), index_col=0)
+    df_total_value = pd.read_csv('csv/validation/account_value_validation_{}.csv'.format(iteration), index_col=0)
     df_total_value.columns = ['account_value_train']
     df_total_value['daily_return'] = df_total_value.pct_change(1)
     sharpe = (4 ** 0.5) * df_total_value['daily_return'].mean() / \
@@ -97,12 +97,12 @@ def prediccion_DRL(df,
                    rebalance_window,
                    initial):
 
-    trade_data = datasplit(df, start=unique_trade_date[iter_num - rebalance_window], end=unique_trade_date[iter_num])
+    trade_data = datasplit(df, inicio=unique_trade_date[iter_num - rebalance_window], final=unique_trade_date[iter_num])
     env_trade = DummyVecEnv([lambda: TESEnvTrade(trade_data,
                                                    initial=initial,
                                                    previous_state=last_state,
                                                    model_name=name,
-                                                   iteration=iter_num)])
+                                                   iteracion=iter_num)])
     obs_trade = env_trade.reset()
 
     for i in range(len(trade_data.index.unique())):
