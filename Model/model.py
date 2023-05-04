@@ -72,6 +72,7 @@ def train_DDPG(env_train, model_name, timesteps=10000):
 
 
 def encontrar_sharpe_validacion(iteration):
+    #iteration = 84
     df_total_value = pd.read_csv('csv/validation/account_value_validation_{}.csv'.format(iteration), index_col=0)
     df_total_value.columns = ['account_value_train']
     df_total_value['daily_return'] = df_total_value.pct_change(1)

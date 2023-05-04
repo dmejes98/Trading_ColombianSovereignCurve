@@ -67,7 +67,7 @@ class TESEnvEntr(gym.Env):
         self.observation_space = spaces.Box(low=0, high=np.inf, shape = (459,))
         # Inicializar sistema de recompensas
         self.recompensa = 0
-        self.costo = 0
+        self.cost = 0
         
         # Memorizar los cambios en el balance   
         self.memoria_activos = [BALANCE_INICIAL_CUENTA]
@@ -119,14 +119,14 @@ class TESEnvEntr(gym.Env):
         # print(actions)
 
         if self.terminal:
-            plt.plot(self.asset_memory,'r')
+            plt.plot(self.memoria_activos,'r')
             plt.savefig('images/train/account_value_train.png')
             plt.close()
             end_total_asset = self.state[0]+ \
             sum(np.array(self.state[1:(TES_DIM+1)])*np.array(self.state[(TES_DIM+1):(TES_DIM*2+1)]))
             
             #print("end_total_asset:{}".format(end_total_asset))
-            df_total_value = pd.DataFrame(self.asset_memory)
+            df_total_value = pd.DataFrame(self.memoria_activos)
             df_total_value.to_csv('csv/train/account_value_train.csv')
             #print("total_reward:{}".format(self.state[0]+sum(np.array(self.state[1:(TES_DIM+1)])*np.array(self.state[(TES_DIM+1):61]))- INITIAL_ACCOUNT_BALANCE ))
             #print("total_cost: ", self.cost)
@@ -137,14 +137,14 @@ class TESEnvEntr(gym.Env):
                   df_total_value['daily_return'].std()
             #print("Sharpe: ",sharpe)
             #print("=================================")
-            df_rewards = pd.DataFrame(self.rewards_memory)
+            df_rewards = pd.DataFrame(self.memoria_recompensa)
             #df_rewards.to_csv('/kaggle/working/account_rewards_train.csv')
             
             # print('total asset: {}'.format(self.state[0]+ sum(np.array(self.state[1:29])*np.array(self.state[29:]))))
             #with open('obs.pkl', 'wb') as f:  
             #    pickle.dump(self.state, f)
             
-            return self.state, self.reward, self.terminal,{}
+            return self.state, self.recompensa, self.terminal,{}
 
         else:
             # print(np.array(self.state[1:29]))
@@ -187,25 +187,25 @@ class TESEnvEntr(gym.Env):
 
             end_total_asset = self.state[0]+ \
             sum(np.array(self.state[1:(TES_DIM+1)])*np.array(self.state[(TES_DIM+1):(TES_DIM*2+1)]))
-            self.asset_memory.append(end_total_asset)
+            self.memoria_activos.append(end_total_asset)
             #print("end_total_asset:{}".format(end_total_asset))
             
-            self.reward = end_total_asset - begin_total_asset            
-            # print("step_reward:{}".format(self.reward))
-            self.rewards_memory.append(self.reward)
+            self.recompensa = end_total_asset - begin_total_asset            
+            # print("step_reward:{}".format(self.recompensa))
+            self.memoria_recompensa.append(self.recompensa)
             
-            self.reward = self.reward*REWARD_SCALING
+            self.recompensa = self.recompensa*REWARD_SCALING
 
-        return self.state, self.reward, self.terminal, {}
+        return self.state, self.recompensa, self.terminal, {}
 
     def reset(self):
-        self.asset_memory = [BALANCE_INICIAL_CUENTA]
+        self.memoria_activos = [BALANCE_INICIAL_CUENTA]
         self.day = 0
         self.data = self.df.loc[self.day,:]
         self.cost = 0
         self.trades = 0
         self.terminal = False 
-        self.rewards_memory = []
+        self.memoria_recompensa = []
         #initiate state
         self.state = [BALANCE_INICIAL_CUENTA] + \
                       self.data["Precio Sucio"].values.tolist() + \
