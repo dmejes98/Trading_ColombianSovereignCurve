@@ -84,7 +84,7 @@ class TESEnvTrade(gym.Env):
     def _buy_ticker(self, index, action):
         
         # perform buy action based on the sign of the action
-        if self.state[index + TES_DIM*8 + 1] == "SI":
+        if self.state[index + TES_DIM*8 + 1] == 1 and self.state[index+1] != 0:
             disponible = self.state[0] // self.state[index+1]
         else:
             disponible = 0
@@ -128,9 +128,17 @@ class TESEnvTrade(gym.Env):
             plt.savefig('images/trading/account_value_trade_{}_{}.png'.format(self.model_name, self.iteration))
             plt.close()
             df_total_value = pd.DataFrame(self.memoria_activos)
-            df_total_value.to_csv('csv/account_value_trade_{}_{}.csv'.format(self.model_name, self.iteration))
+            df_total_value.to_csv('csv/trading/account_value_trade_{}_{}.csv'.format(self.model_name, self.iteration))
+            
+            
+            precios = self.state[1:(TES_DIM+1)]
+            precios = [0 if np.isnan(x) else x for x in precios]
+            pos = self.state[(TES_DIM+1):(TES_DIM*2+1)]
+            pos = [0 if np.isnan(x) else x for x in pos]            
+            
             end_total_asset = self.state[0]+ \
-            sum(np.array(self.state[1:(TES_DIM+1)])*np.array(self.state[(TES_DIM+1):(TES_DIM*2+1)]))
+            sum(np.array(precios)*np.array(pos))
+            
             print("previous_total_asset:{}".format(self.memoria_activos[0]))  
             
             print("end_total_asset:{}".format(end_total_asset))
@@ -140,7 +148,7 @@ class TESEnvTrade(gym.Env):
             
             df_total_value.columns = ['account_value']
             df_total_value['daily_return']=df_total_value.pct_change(1)
-            sharpe = (252**0.5)*df_total_value['daily_return'].mean()/ \
+            sharpe = df_total_value['daily_return'].mean()/ \
                   df_total_value['daily_return'].std()
             print("Sharpe: ",sharpe)
             #print("=================================")
@@ -159,8 +167,14 @@ class TESEnvTrade(gym.Env):
             actions = actions * TES_NORMALIZE
             #actions = (actions.astype(int))
             
+            precios = self.state[1:(TES_DIM+1)]
+            precios = [0 if np.isnan(x) else x for x in precios]
+            pos = self.state[(TES_DIM+1):(TES_DIM*2+1)]
+            pos = [0 if np.isnan(x) else x for x in pos]            
+            
             begin_total_asset = self.state[0]+ \
-            sum(np.array(self.state[1:(TES_DIM+1)])*np.array(self.state[(TES_DIM+1):(TES_DIM*2+1)]))
+            sum(np.array(precios)*np.array(pos))
+            
             #print("begin_total_asset:{}".format(begin_total_asset))
             
             argsort_actions = np.argsort(actions)
@@ -192,8 +206,14 @@ class TESEnvTrade(gym.Env):
                           self.data.Convexidad.values.tolist() + \
                           self.data.Vigente.values.tolist()
 
+            precios = self.state[1:(TES_DIM+1)]
+            precios = [0 if np.isnan(x) else x for x in precios]
+            pos = self.state[(TES_DIM+1):(TES_DIM*2+1)]
+            pos = [0 if np.isnan(x) else x for x in pos]            
+            
             end_total_asset = self.state[0]+ \
-            sum(np.array(self.state[1:(TES_DIM+1)])*np.array(self.state[(TES_DIM+1):(TES_DIM*2+1)]))
+            sum(np.array(precios)*np.array(pos))
+            
             self.memoria_activos.append(end_total_asset)
             #print("end_total_asset:{}".format(end_total_asset))
             

@@ -79,7 +79,7 @@ class TESEnvEntr(gym.Env):
     def _buy_ticker(self, index, action):
         
         # perform buy action based on the sign of the action
-        if self.state[index + TES_DIM*8 + 1] == "SI":
+        if self.state[index + TES_DIM*8 + 1] == 1 and self.state[index+1] != 0:
             disponible = self.state[0] // self.state[index+1]
         else:
             disponible = 0
@@ -122,20 +122,26 @@ class TESEnvEntr(gym.Env):
             plt.plot(self.memoria_activos,'r')
             plt.savefig('images/train/account_value_train.png')
             plt.close()
-            end_total_asset = self.state[0]+ \
-            sum(np.array(self.state[1:(TES_DIM+1)])*np.array(self.state[(TES_DIM+1):(TES_DIM*2+1)]))
             
-            #print("end_total_asset:{}".format(end_total_asset))
+            precios = self.state[1:(TES_DIM+1)]
+            precios = [0 if np.isnan(x) else x for x in precios]
+            pos = self.state[(TES_DIM+1):(TES_DIM*2+1)]
+            pos = [0 if np.isnan(x) else x for x in pos]            
+            
+            end_total_asset = self.state[0]+ \
+            sum(np.array(precios)*np.array(pos))
+            
+            # print("end_total_asset:{}".format(end_total_asset))
             df_total_value = pd.DataFrame(self.memoria_activos)
             df_total_value.to_csv('csv/train/account_value_train.csv')
             #print("total_reward:{}".format(self.state[0]+sum(np.array(self.state[1:(TES_DIM+1)])*np.array(self.state[(TES_DIM+1):61]))- INITIAL_ACCOUNT_BALANCE ))
             #print("total_cost: ", self.cost)
-            #print("total_trades: ", self.trades)
+            # print("total_trades: ", self.trades)
             df_total_value.columns = ['account_value']
             df_total_value['daily_return']=df_total_value.pct_change(1)
-            sharpe = (252**0.5)*df_total_value['daily_return'].mean()/ \
+            sharpe = df_total_value['daily_return'].mean()/ \
                   df_total_value['daily_return'].std()
-            #print("Sharpe: ",sharpe)
+            # print("Sharpe: ",sharpe)
             #print("=================================")
             df_rewards = pd.DataFrame(self.memoria_recompensa)
             #df_rewards.to_csv('/kaggle/working/account_rewards_train.csv')
@@ -152,8 +158,14 @@ class TESEnvEntr(gym.Env):
             actions = actions * TES_NORMALIZE
             #actions = (actions.astype(int))
             
+            precios = self.state[1:(TES_DIM+1)]
+            precios = [0 if np.isnan(x) else x for x in precios]
+            pos = self.state[(TES_DIM+1):(TES_DIM*2+1)]
+            pos = [0 if np.isnan(x) else x for x in pos]            
+            
             begin_total_asset = self.state[0]+ \
-            sum(np.array(self.state[1:(TES_DIM+1)])*np.array(self.state[(TES_DIM+1):(TES_DIM*2+1)]))
+            sum(np.array(precios)*np.array(pos))
+            
             #print("begin_total_asset:{}".format(begin_total_asset))
             
             argsort_actions = np.argsort(actions)
@@ -162,11 +174,11 @@ class TESEnvEntr(gym.Env):
             buy_index = argsort_actions[::-1][:np.where(actions > 0)[0].shape[0]]
 
             for index in sell_index:
-                # print('take sell action'.format(actions[index]))
+                # print(index, 'take sell action: {}'.format(actions[index]))
                 self._sell_ticker(index, actions[index])
 
             for index in buy_index:
-                # print('take buy action: {}'.format(actions[index]))
+                # print(index, 'take buy action: {}'.format(actions[index]))
                 self._buy_ticker(index, actions[index])
 
             self.day += 1
@@ -185,10 +197,17 @@ class TESEnvEntr(gym.Env):
                           self.data.Convexidad.values.tolist() + \
                           self.data.Vigente.values.tolist()
 
+            precios = self.state[1:(TES_DIM+1)]
+            precios = [0 if np.isnan(x) else x for x in precios]
+            pos = self.state[(TES_DIM+1):(TES_DIM*2+1)]
+            pos = [0 if np.isnan(x) else x for x in pos]            
+            
+            # print(precios, pos)
             end_total_asset = self.state[0]+ \
-            sum(np.array(self.state[1:(TES_DIM+1)])*np.array(self.state[(TES_DIM+1):(TES_DIM*2+1)]))
+            sum(np.array(precios)*np.array(pos))
+            
             self.memoria_activos.append(end_total_asset)
-            #print("end_total_asset:{}".format(end_total_asset))
+            # print("end_total_asset:{}".format(end_total_asset))
             
             self.recompensa = end_total_asset - begin_total_asset            
             # print("step_reward:{}".format(self.recompensa))

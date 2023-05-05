@@ -76,7 +76,7 @@ def encontrar_sharpe_validacion(iteration):
     df_total_value = pd.read_csv('csv/validation/account_value_validation_{}.csv'.format(iteration), index_col=0)
     df_total_value.columns = ['account_value_train']
     df_total_value['daily_return'] = df_total_value.pct_change(1)
-    sharpe = (4 ** 0.5) * df_total_value['daily_return'].mean() / \
+    sharpe = df_total_value['daily_return'].mean() / \
              df_total_value['daily_return'].std()
     return sharpe
 
@@ -113,13 +113,13 @@ def prediccion_DRL(df,
             last_state = env_trade.render()
 
     df_last_state = pd.DataFrame({'last_state': last_state})
-    df_last_state.to_csv('csv/last_state_{}_{}.csv'.format(name, i), index=False)
+    df_last_state.to_csv('csv/trading/last_state_{}_{}.csv'.format(name, i), index=False)
     return last_state
 
 
 def datasplit(df, inicio, final):
     
-  
+    # data = cons_TES
     data = df[(df.Fecha >= inicio) & (df.Fecha < final)]
     
     maestro_TES = pd.read_excel(r'data.xlsx')
@@ -134,7 +134,7 @@ def datasplit(df, inicio, final):
 
             if j not in list(filtered_data["Instrumento"]):
 
-                new_element = [i, j, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                new_element = [i, j, float(0), float(0), float(0), float(0), float(0), float(0), float(0), float(0), float(0), float(0), float(0)]
                 new_data.loc[len(new_data)] = new_element
         
             
