@@ -153,7 +153,7 @@ class TESEnvTrade(gym.Env):
             print("Sharpe: ",sharpe)
             #print("=================================")
             df_rewards = pd.DataFrame(self.memoria_recompensa)
-            df_rewards.to_csv('csv/account_rewards_trade_{}_{}.csv'.format(self.model_name, self.iteration))
+            df_rewards.to_csv('csv/trading/account_rewards_trade_{}_{}.csv'.format(self.model_name, self.iteration))
             
             # print('total asset: {}'.format(self.state[0]+ sum(np.array(self.state[1:29])*np.array(self.state[29:]))))
             #with open('obs.pkl', 'wb') as f:  

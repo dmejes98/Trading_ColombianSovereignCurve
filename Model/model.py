@@ -72,13 +72,18 @@ def train_DDPG(env_train, model_name, timesteps=10000):
 
 
 def encontrar_sharpe_validacion(iteration):
-    #iteration = 84
+    # iteration = 756
     df_total_value = pd.read_csv('csv/validation/account_value_validation_{}.csv'.format(iteration), index_col=0)
     df_total_value.columns = ['account_value_train']
     df_total_value['daily_return'] = df_total_value.pct_change(1)
     sharpe = df_total_value['daily_return'].mean() / \
              df_total_value['daily_return'].std()
-    return sharpe
+             
+    
+    if np.isnan(sharpe):
+        return 0         
+    else:
+        return sharpe
 
 
 
@@ -160,6 +165,11 @@ def estrategia_ensamblada(df, fechas_bursatiles, rebalanceo, validacion):
     #run_complete()
     
     ult_estado_ens = []
+    ult_estado_ddpg = []
+    ult_estado_a2c = []
+    ult_estado_ppo = [] 
+    
+    
     ppo_perform = []
     ddpg_perform = []
     a2c_perform = []
@@ -237,8 +247,28 @@ def estrategia_ensamblada(df, fechas_bursatiles, rebalanceo, validacion):
                                              rebalance_window=rebalanceo,
                                              initial=initial)
         
+        ult_estado_ppo = prediccion_DRL(df=df, model=model_ppo, name="ppo",
+                                             last_state=ult_estado_ppo, iter_num=i,
+                                             unique_trade_date=unique_trade_date,
+                                             rebalance_window=rebalanceo,
+                                             initial=initial)
+        
+        ult_estado_a2c = prediccion_DRL(df=df, model=model_a2c, name="a2c",
+                                             last_state=ult_estado_a2c, iter_num=i,
+                                             unique_trade_date=unique_trade_date,
+                                             rebalance_window=rebalanceo,
+                                             initial=initial)
+        
+        ult_estado_ddpg = prediccion_DRL(df=df, model=model_ddpg, name="ddpg",
+                                             last_state=ult_estado_ddpg, iter_num=i,
+                                             unique_trade_date=unique_trade_date,
+                                             rebalance_window=rebalanceo,
+                                             initial=initial)
+        
     final = time.time()
     print("Ensemble Strategy took: ", (inicio - final) / 60, " minutes")
+    
+    return uso_modelo, ppo_perform, a2c_perform, ddpg_perform
     
 
 
@@ -257,16 +287,16 @@ if __name__ == "__main__":
     cons_TES["Fecha"] = fechas_int
     
     
-    ventana_rebalanceo = 21
-    ventana_val = 21
+    ventana_rebalanceo = 63
+    ventana_val = 63
     
     unique_trade_date = cons_TES.Fecha.unique()
     # print(unique_trade_date)
     
     # Correr estrategia de ensamble
-    estrategia_ensamblada(df = cons_TES, 
-                              fechas_bursatiles = unique_trade_date,
-                              rebalanceo = ventana_rebalanceo,
-                              validacion = ventana_val)
+    uso_modelo, ppo_perform, a2c_perform, ddpg_perform = estrategia_ensamblada(df = cons_TES, 
+                                                                                fechas_bursatiles = unique_trade_date,
+                                                                                rebalanceo = ventana_rebalanceo,
+                                                                                validacion = ventana_val)
 
 
