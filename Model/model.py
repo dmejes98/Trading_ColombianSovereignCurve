@@ -9,6 +9,8 @@ import numpy as np
 import datetime as dt
 import time
 import matplotlib.pyplot as plt
+import openpyxl
+from openpyxl.utils import get_column_letter
 
 from EnvTES_train import TESEnvEntr
 from EnvTES_val import TESEnvVal
@@ -81,9 +83,9 @@ def encontrar_sharpe_validacion(iteration):
              
     
     if np.isnan(sharpe):
-        return 0         
+        return 0, list(df_total_value['daily_return'])      
     else:
-        return sharpe
+        return sharpe, list(df_total_value['daily_return'])
 
 
 
@@ -176,6 +178,12 @@ def estrategia_ensamblada(df, fechas_bursatiles, rebalanceo, validacion):
     
     uso_modelo = []
     
+    trade_balance_ens = []
+    trade_balance_a2c = []
+    trade_balance_ppo = []
+    trade_balance_ddpg = []
+    
+    
     inicio = time.time()
     for i in range(2*rebalanceo + 2*validacion, len(fechas_bursatiles), rebalanceo):
         # i = 2*rebalanceo + 2*validacion
@@ -205,7 +213,7 @@ def estrategia_ensamblada(df, fechas_bursatiles, rebalanceo, validacion):
         print(" - Validación A2C desde: ", fechas_bursatiles[i - rebalanceo - validacion], "to ",
               fechas_bursatiles[i - rebalanceo])
         DRL_validation(model=model_a2c, test_data=validate, test_env=env_val, test_obs=obs_val)
-        sharpe_a2c = encontrar_sharpe_validacion(i)
+        sharpe_a2c, rets_a2c = encontrar_sharpe_validacion(i)
         print(" - A2C Sharpe Ratio: ", sharpe_a2c)
     
         print(" - Entrenamiento PPO")
@@ -213,7 +221,7 @@ def estrategia_ensamblada(df, fechas_bursatiles, rebalanceo, validacion):
         print(" - Validación PPO desde: ", fechas_bursatiles[i - rebalanceo - validacion], "hasta: ",
               fechas_bursatiles[i - rebalanceo])
         DRL_validation(model=model_ppo, test_data=validate, test_env=env_val, test_obs=obs_val)
-        sharpe_ppo = encontrar_sharpe_validacion(i)
+        sharpe_ppo, rets_ppo = encontrar_sharpe_validacion(i)
         print(" - PPO Sharpe Ratio: ", sharpe_ppo)
     
         print(" - Entrenamiento DDPG")
@@ -221,12 +229,12 @@ def estrategia_ensamblada(df, fechas_bursatiles, rebalanceo, validacion):
         print(" - Validación DDPG desde: ", fechas_bursatiles[i - rebalanceo - validacion], "hasta: ",
               unique_trade_date[i - rebalanceo])
         DRL_validation(model=model_ddpg, test_data=validate, test_env=env_val, test_obs=obs_val)
-        sharpe_ddpg = encontrar_sharpe_validacion(i)
+        sharpe_ddpg, rets_ddpg = encontrar_sharpe_validacion(i)
         print(" - DDPG Sharpe Ratio: ", sharpe_ddpg)
     
-        ppo_perform.append(sharpe_ppo)
-        a2c_perform.append(sharpe_a2c)
-        ddpg_perform.append(sharpe_ddpg)
+        ppo_perform.append([sharpe_ppo, rets_ppo])
+        a2c_perform.append([sharpe_a2c, rets_a2c])
+        ddpg_perform.append([sharpe_ddpg, rets_ddpg])
         
         # Selección del Modelo Basado en Sharpe Ratio
         if (sharpe_ppo >= sharpe_a2c) & (sharpe_ppo >= sharpe_ddpg):
@@ -246,29 +254,54 @@ def estrategia_ensamblada(df, fechas_bursatiles, rebalanceo, validacion):
                                              unique_trade_date=unique_trade_date,
                                              rebalance_window=rebalanceo,
                                              initial=initial)
+        trade_balance_ens.append(ult_estado_ens[0])
+        print("Balance de Ensamble hasta iteración:", trade_balance_ens)
         
         ult_estado_ppo = prediccion_DRL(df=df, model=model_ppo, name="ppo",
                                              last_state=ult_estado_ppo, iter_num=i,
                                              unique_trade_date=unique_trade_date,
                                              rebalance_window=rebalanceo,
                                              initial=initial)
+        trade_balance_ppo.append(ult_estado_ppo[0])
         
         ult_estado_a2c = prediccion_DRL(df=df, model=model_a2c, name="a2c",
                                              last_state=ult_estado_a2c, iter_num=i,
                                              unique_trade_date=unique_trade_date,
                                              rebalance_window=rebalanceo,
                                              initial=initial)
+        trade_balance_a2c.append(ult_estado_a2c[0])
         
         ult_estado_ddpg = prediccion_DRL(df=df, model=model_ddpg, name="ddpg",
                                              last_state=ult_estado_ddpg, iter_num=i,
                                              unique_trade_date=unique_trade_date,
                                              rebalance_window=rebalanceo,
                                              initial=initial)
+        trade_balance_ddpg.append(ult_estado_ddpg[0])
+            
         
+    # Crear un libro de trabajo
+    workbook = openpyxl.Workbook()
+    
+    # Crear hojas y asignar nombres
+    hojas = ["trade_balance_ens", "trade_balance_a2c", "trade_balance_ppo", "trade_balance_ddpg"]
+    for hoja in hojas:
+        workbook.create_sheet(hoja)
+    
+    # Pegar las listas en las hojas correspondientes
+    listas = [trade_balance_ens, trade_balance_a2c, trade_balance_ppo, trade_balance_ddpg]
+    for i, lista in enumerate(listas):
+        hoja = workbook[hojas[i]]
+        for j, item in enumerate(lista):
+            hoja.cell(row=j+1, column=1).value = item
+
+    workbook.save("Resultados.xlsx")  
+
+    tradeBalances = [trade_balance_ens, trade_balance_a2c, trade_balance_ppo, trade_balance_ddpg]
+    
     final = time.time()
     print("Ensemble Strategy took: ", (inicio - final) / 60, " minutes")
     
-    return uso_modelo, ppo_perform, a2c_perform, ddpg_perform
+    return uso_modelo, ppo_perform, a2c_perform, ddpg_perform, tradeBalances
     
 
 
@@ -294,9 +327,11 @@ if __name__ == "__main__":
     # print(unique_trade_date)
     
     # Correr estrategia de ensamble
-    uso_modelo, ppo_perform, a2c_perform, ddpg_perform = estrategia_ensamblada(df = cons_TES, 
+    uso_modelo, ppo_perform, a2c_perform, ddpg_perform, tradeBalances = estrategia_ensamblada(df = cons_TES, 
                                                                                 fechas_bursatiles = unique_trade_date,
                                                                                 rebalanceo = ventana_rebalanceo,
                                                                                 validacion = ventana_val)
 
 
+a = pd.DataFrame(ddpg_perform)
+a.to_clipboard()
