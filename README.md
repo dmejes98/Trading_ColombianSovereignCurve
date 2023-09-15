@@ -32,12 +32,6 @@ En esta carpeta se deben ubicar los archivos de excel "consolidado_total.xlsx" y
 
 La ejecución de los modelos arroja el excel "Resultados.xlsx" en esta misma carpeta. También, llena las carpetas "csv", "images" y "Working", con los resultados de los modelos discriminados por etapas de entrenamiento, validación y testeo (negociación).
 
-##### .gitignore
-
-No se suben al repositorio archivos de excel ni algunas carpetas. Dentro de los archivos ignorados se encuentra el libro de excel "uso modelos.xlsx", en donde se encuentra un resumen completo de los resultados de la ejecución de los modelos.
-
-Toda esta información que no es cargada al repositorio se adjuta al Comité de la Maestría, a través del [formulario para la entrega del proyecto](https://forms.office.com/r/Qd9SSGCPfr) en la sección de anexos.
-
 ### Disclaimer
 
 Este trabajo de grado tiene fines únicamente académicos. Si bien el objetivo es realizar aportes científicos sobre aplicaciones de machine learning al mercado de valores, en ningún momento lo dicho en este trabajo debe entenderse explícita o implícitamente como una recomendación de inversión.
